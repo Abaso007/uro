@@ -14,8 +14,7 @@ def clean_nargs(args):
 			new_args.append(args[0].lower())
 	else:
 		for arg in args:
-			cleaner = clean_nargs([arg])
-			if cleaner:
+			if cleaner := clean_nargs([arg]):
 				new_args.extend(cleaner)
 			else:
 				new_args.append(arg)
@@ -40,7 +39,7 @@ def dict_to_params(params):
 	"""
 	converts dict of params to query string
 	"""
-	stringed = [name + '=' + value for name, value in params.items()]
+	stringed = [f'{name}={value}' for name, value in params.items()]
 	return '?' + '&'.join(stringed)
 
 

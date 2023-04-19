@@ -60,7 +60,7 @@ def remove_content(path, params, meta):
 	for part in path.split('/'):
 		if part.count('-') > 3:
 			return False
-	return False if re_content.search(path) else True
+	return not re_content.search(path)
 
 def has_vuln_param(path, params, meta):
 	"""

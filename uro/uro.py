@@ -81,19 +81,13 @@ def matches_patterns(path):
 	"""
 	checks if the url matches any of the int patterns
 	"""
-	for pattern in patterns_seen:
-		if re.search(pattern, path):
-			return True
-	return False
+	return any(re.search(pattern, path) for pattern in patterns_seen)
 
 def is_new_param(params):
 	"""
 	checks if a there's an unseen param within given params
 	"""
-	for param in params:
-		if param in params_seen:
-			return False
-	return True
+	return all(param not in params_seen for param in params)
 
 
 def apply_filters(path, params):
@@ -113,26 +107,25 @@ def apply_filters(path, params):
 	}
 	results = []
 	meta = {
-		'strict': True if ('hasext' or 'noext') in filters else False,
+		'strict': ('hasext' or 'noext') in filters,
 		'ext_list': ext_list,
 		'vuln_params': vuln_params,
 	}
-	for filter in active_filters:
-		if filter in filter_map:
-			if not filter_map[filter](path, params, meta):
-				return False
-	return True
+	return not any(
+		filter in filter_map and not filter_map[filter](path, params, meta)
+		for filter in active_filters
+	)
 
 
 def process_url(url):
 	"""
 	processes a url
 	"""
-	host = url.scheme + '://' + url.netloc
+	host = f'{url.scheme}://{url.netloc}'
 	if host not in urlmap:
 		urlmap[host] = {}
 	path, params = url.path, params_to_dict(url.query)
-	has_new_param = False if not params else is_new_param(params.keys())
+	has_new_param = is_new_param(params.keys()) if params else False
 	new_params = [param for param in params.keys() if param not in params_seen]
 	params_seen.extend(new_params)
 	if (not params or has_new_param) and re_int.search(path):
@@ -141,8 +134,7 @@ def process_url(url):
 			patterns_seen.append(pattern)
 		elif matches_patterns(path):
 			return
-	keep_url = apply_filters(path, params)
-	if keep_url:
+	if keep_url := apply_filters(path, params):
 		if path not in urlmap[host]:
 			urlmap[host][path] = [params] if params else []
 		elif has_new_param or compare_params(urlmap[host][path], params):
@@ -150,9 +142,8 @@ def process_url(url):
 
 def main():
 	input_stream = open(args.input_file, 'r') if args.input_file else None
-	if not input_stream:
-		if not sys.stdin.isatty():
-			input_stream = sys.stdin
+	if not input_stream and not sys.stdin.isatty():
+		input_stream = sys.stdin
 	if not input_stream:
 		print('[ERROR] No input file or stdin.', file=sys.stderr)
 		exit(1)
